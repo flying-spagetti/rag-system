@@ -1,0 +1,30 @@
+[project]
+name = "regrag"
+version = "0.1.0"
+description = "A retrieval-augmented generation service"
+readme = "README.md"
+authors = [
+    { name = "Gnaneswar Lopinti", email = "gnan.lopinti@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.16.5",
+    "psycopg[binary]>=3.2.10",
+    "pydantic-settings>=2.11.0",
+    "python-dotenv>=1.1.1",
+    "redis>=6.4.0",
+    "sqlalchemy>=2.0.43",
+]
+
+[project.scripts]
+regrag = "regrag:main"
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.4",
+]
