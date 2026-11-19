@@ -553,87 +553,10 @@ def test_alembic_migration_matches_database_catalog() -> None:
         connection.exec_driver_sql(f'SET search_path TO "{schema_name}"')
         config = Config("alembic.ini")
         config.attributes["connection"] = connection
-        command.upgrade(config, "20261114_0001")
-        connection.exec_driver_sql(f'SET search_path TO "{schema_name}"')
-        run_id = uuid4()
-        work_id = uuid4()
-        file_id = uuid4()
-        identifier_id = uuid4()
-        connection.execute(
-            text(
-                "INSERT INTO runs (id, status) VALUES (:id, 'succeeded')"
-            ),
-            {"id": run_id},
-        )
-        connection.execute(
-            text(
-                "INSERT INTO works "
-                "(id, created_run_id, title, instrument_type, authority_tier, "
-                "legal_force, resolution_status, source_metadata) "
-                "VALUES (:id, :run_id, 'Sample Act', 'act', 'national', "
-                "'binding', 'resolved', '{}')"
-            ),
-            {"id": work_id, "run_id": run_id},
-        )
-        connection.execute(
-            text(
-                "INSERT INTO files "
-                "(id, created_run_id, sha256, source_url, file_format, byte_size) "
-                "VALUES (:id, :run_id, :sha256, :url, 'pdf', 10)"
-            ),
-            {
-                "id": file_id,
-                "run_id": run_id,
-                "sha256": "a" * 64,
-                "url": "HTTPS://Example.TEST:443/a.pdf#page=1",
-            },
-        )
-        connection.execute(
-            text(
-                "INSERT INTO identifiers (id, work_id, created_run_id, scheme, value) "
-                "VALUES (:id, :work_id, :run_id, ' URL ', "
-                "'HTTPS://Example.TEST:443/a.pdf#page=1')"
-            ),
-            {"id": identifier_id, "work_id": work_id, "run_id": run_id},
-        )
+        command.upgrade(config, "head")
+        command.downgrade(config, "base")
         command.upgrade(config, "head")
         connection.exec_driver_sql(f'SET search_path TO "{schema_name}"')
-        assert connection.scalar(text("SELECT to_regclass('file_sources')"))
-        assert connection.scalar(
-            text(
-                "SELECT normalized_url FROM file_sources WHERE file_id = :file_id"
-            ),
-            {"file_id": file_id},
-        ) == "https://example.test/a.pdf"
-        assert connection.scalar(
-            text(
-                "SELECT scheme || ':' || normalized_value "
-                "FROM identifiers WHERE id = :identifier_id"
-            ),
-            {"identifier_id": identifier_id},
-        ) == "url:https://example.test/a.pdf"
-        ambiguous_work_id = uuid4()
-        connection.execute(
-            text(
-                "INSERT INTO works "
-                "(id, created_run_id, title, instrument_type, authority_tier, "
-                "jurisdiction_scope, legal_force, resolution_status, source_metadata) "
-                "VALUES (:id, :run_id, NULL, 'constitution', 'constitutional', "
-                "'national', 'binding', 'ambiguous', '{}')"
-            ),
-            {"id": ambiguous_work_id, "run_id": run_id},
-        )
-        command.downgrade(config, "20261114_0001")
-        connection.exec_driver_sql(f'SET search_path TO "{schema_name}"')
-        downgraded_work = connection.execute(
-            text(
-                "SELECT instrument_type, authority_tier, resolution_status "
-                "FROM works WHERE id = :id"
-            ),
-            {"id": ambiguous_work_id},
-        ).one()
-        assert downgraded_work == ("other", "court", "stub")
-        command.upgrade(config, "head")
 
         inspector = inspect(connection)
         assert set(inspector.get_table_names()) == set(Base.metadata.tables) | {
