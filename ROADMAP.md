@@ -30,11 +30,21 @@ Schema decisions:
   resolution status fields. A stub may omit its title; source-specific,
   non-filtered extras use mutable JSONB.
 - Instrument identifiers are separate rows with globally unique `(scheme,
-  value)` pairs. URLs can be identifiers; the removed `external_id` field is
-  not used.
+  normalized_value)` pairs. Schemes are trimmed and lowercased; non-URL
+  identifier values are trimmed, while URLs lowercase scheme/host, remove
+  default ports and fragments, and preserve path and query. The original value
+  is retained. URLs can be identifiers; the removed `external_id` field is not
+  used.
 - Files are immutable content-addressed records with a required unique SHA-256.
-  Their storage key is derived from the hash. `version_files` permits reuse
-  across versions and records the run that created each link.
+  Their storage key is derived from the hash. `file_sources` stores multiple
+  source URLs per file and the run that observed each source; `version_files`
+  permits reuse across versions and records the run that created each link.
+- `authority_tier` describes precedence class, separately from
+  `jurisdiction_scope` (national/state/local/multi-state/territory). Work
+  resolution states are `stub`, `unresolved`, `ambiguous`, and `resolved`.
+  Initial instrument types are constrained to the values in the Work model.
+- Runs store pipeline name/version and mutable JSONB metadata for reproducible
+  ingestion context.
 - Ingestion-derived rows carry a `created_run_id`; deleting a run is restricted
   so rollback is an explicit, auditable operation rather than accidental
   cascade deletion. Rollback marks the run `rolled_back`; it removes that run's

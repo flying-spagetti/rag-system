@@ -14,10 +14,11 @@ uv run alembic upgrade head
 
 The Compose stack starts PostgreSQL with the pgvector extension available and
 Redis. Alembic enables the `vector` extension and creates `works`, `versions`,
-`identifiers`, `runs`, content-addressed `files`, and the `version_files`
-association table. Embedding columns are deferred until the retrieval phase,
-when the embedding model, version, and dimension can be stored alongside each
-embedding.
+`identifiers`, `runs`, content-addressed `files`, and the `version_files` and
+`file_sources` association tables. A file's immutable bytes have one SHA-256
+record; each source URL is tracked separately and may point to the same file.
+Embedding columns are deferred until retrieval, when model name, version, and
+dimension can be stored with each embedding.
 
 Versions use calendar `Date` columns for legal dates. A missing version label is
 allowed only for consolidated versions. File hashes are unique; `files` stores
@@ -42,7 +43,9 @@ To stop the services while retaining local data:
 docker compose down
 ```
 
-Database constraint tests use isolated PostgreSQL schemas:
+Database tests use isolated PostgreSQL schemas. They exercise constraints and
+run Alembic in a temporary schema, then compare the migrated catalog with the
+SQLAlchemy metadata:
 
 ```sh
 docker compose up -d --wait

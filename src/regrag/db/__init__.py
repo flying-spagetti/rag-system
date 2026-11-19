@@ -1,5 +1,6 @@
 from regrag.db.models import (
     Base,
+    FileSource,
     Run,
     Version,
     VersionFile,
@@ -10,6 +11,7 @@ from regrag.db.models import (
 
 __all__ = [
     "Base",
+    "FileSource",
     "Run",
     "Version",
     "VersionFile",
