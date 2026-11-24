@@ -1,5 +1,4 @@
 from datetime import date, datetime
-from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
@@ -17,9 +16,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
-from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -66,9 +63,6 @@ class Run(Base):
         String(128), nullable=False, default="regrag", server_default="regrag"
     )
     pipeline_version: Mapped[str | None] = mapped_column(String(128))
-    run_metadata: Mapped[dict[str, Any]] = mapped_column(
-        "metadata", MutableDict.as_mutable(JSONB), default=dict, server_default="{}"
-    )
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, default="running", server_default="running"
     )
@@ -113,12 +107,6 @@ class Work(Base):
             "resolution_status != 'resolved' OR title IS NOT NULL",
             name="title_required_when_resolved",
         ),
-        Index("ix_works_resolution_status", "resolution_status"),
-        Index("ix_works_instrument_type", "instrument_type"),
-        Index("ix_works_authority_tier", "authority_tier"),
-        Index("ix_works_jurisdiction_scope", "jurisdiction_scope"),
-        Index("ix_works_issuing_authority", "issuing_authority"),
-        Index("ix_works_legal_force", "legal_force"),
         Index("ix_works_created_run_id", "created_run_id"),
     )
 
@@ -145,17 +133,8 @@ class Work(Base):
     resolution_status: Mapped[str] = mapped_column(
         String(32), nullable=False, default="stub", server_default="stub"
     )
-    source_metadata: Mapped[dict[str, Any]] = mapped_column(
-        MutableDict.as_mutable(JSONB), default=dict, server_default="{}"
-    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=func.now(),
-        onupdate=func.now(),
     )
     versions: Mapped[list["Version"]] = relationship(
         back_populates="work", passive_deletes="all"
@@ -193,8 +172,6 @@ class Version(Base):
             "status IN ('active', 'superseded', 'withdrawn')",
             name="status_values",
         ),
-        Index("ix_versions_status_effective_from", "status", "effective_from"),
-        Index("ix_versions_status_effective_to", "status", "effective_to"),
         Index("ix_versions_created_run_id", "created_run_id"),
     )
 
@@ -219,9 +196,6 @@ class Version(Base):
     issued_on: Mapped[date | None] = mapped_column(Date)
     published_on: Mapped[date | None] = mapped_column(Date)
     consolidated_up_to: Mapped[date | None] = mapped_column(Date)
-    source_metadata: Mapped[dict[str, Any]] = mapped_column(
-        MutableDict.as_mutable(JSONB), default=dict, server_default="{}"
-    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -303,10 +277,8 @@ class WorkFile(Base):
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     file_format: Mapped[str] = mapped_column(String(32), nullable=False)
     byte_size: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    fetched_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
     parse_quality: Mapped[float | None] = mapped_column(Float)
+    # Time the immutable file record was first stored.
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -331,7 +303,6 @@ class FileSource(Base):
             name="source_url_not_empty",
         ),
         Index("ix_file_sources_created_run_id", "created_run_id"),
-        Index("ix_file_sources_normalized_url", "normalized_url"),
     )
 
     id: Mapped[UUID] = mapped_column(
@@ -345,6 +316,7 @@ class FileSource(Base):
     )
     source_url: Mapped[str] = mapped_column(Text, nullable=False)
     normalized_url: Mapped[str] = mapped_column(Text, nullable=False)
+    # Time this source URL was first observed for the file.
     fetched_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

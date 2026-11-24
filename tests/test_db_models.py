@@ -535,14 +535,6 @@ def test_version_file_primary_key_rejects_duplicate_association(
         db_session.flush()
 
 
-def test_run_metadata_tracks_in_place_json_mutations(db_session: Session) -> None:
-    run = create_run(db_session)
-    run.run_metadata["source"] = "gazette"
-    db_session.flush()
-    db_session.expire(run)
-    assert run.run_metadata == {"source": "gazette"}
-
-
 def test_alembic_migration_matches_database_catalog() -> None:
     engine = create_engine(settings.database_url)
     schema_name = f"alembic_test_{uuid4().hex}"
@@ -608,9 +600,6 @@ def test_alembic_migration_matches_database_catalog() -> None:
         assert (
             consolidated_index["dialect_options"]["postgresql_where"]
             == "is_consolidated"
-        )
-        assert connection.scalar(
-            text("SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector')")
         )
         columns = {item["name"]: item for item in inspector.get_columns("versions")}
         assert columns["effective_from"]["type"].__class__.__name__ == "DATE"

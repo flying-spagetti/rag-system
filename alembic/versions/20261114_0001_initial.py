@@ -18,8 +18,6 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.execute("CREATE EXTENSION IF NOT EXISTS vector")
-
     op.create_table(
         "runs",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
@@ -27,12 +25,6 @@ def upgrade() -> None:
             "pipeline_name", sa.String(128), server_default="regrag", nullable=False
         ),
         sa.Column("pipeline_version", sa.String(128)),
-        sa.Column(
-            "metadata",
-            postgresql.JSONB(astext_type=sa.Text()),
-            server_default="{}",
-            nullable=False,
-        ),
         sa.Column("status", sa.String(32), server_default="running", nullable=False),
         sa.Column(
             "started_at",
@@ -59,12 +51,6 @@ def upgrade() -> None:
         sa.Column("sha256", sa.String(64), nullable=False),
         sa.Column("file_format", sa.String(32), nullable=False),
         sa.Column("byte_size", sa.BigInteger(), nullable=False),
-        sa.Column(
-            "fetched_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
         sa.Column("parse_quality", sa.Float()),
         sa.Column(
             "created_at",
@@ -107,19 +93,7 @@ def upgrade() -> None:
         sa.Column("legal_force", sa.String(32), server_default="unknown", nullable=False),
         sa.Column("resolution_status", sa.String(32), server_default="stub", nullable=False),
         sa.Column(
-            "source_metadata",
-            postgresql.JSONB(astext_type=sa.Text()),
-            server_default="{}",
-            nullable=False,
-        ),
-        sa.Column(
             "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-        sa.Column(
-            "updated_at",
             sa.DateTime(timezone=True),
             server_default=sa.text("now()"),
             nullable=False,
@@ -162,13 +136,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_works")),
     )
-    op.create_index("ix_works_authority_tier", "works", ["authority_tier"])
-    op.create_index("ix_works_instrument_type", "works", ["instrument_type"])
-    op.create_index("ix_works_resolution_status", "works", ["resolution_status"])
     op.create_index("ix_works_created_run_id", "works", ["created_run_id"])
-    op.create_index("ix_works_jurisdiction_scope", "works", ["jurisdiction_scope"])
-    op.create_index("ix_works_issuing_authority", "works", ["issuing_authority"])
-    op.create_index("ix_works_legal_force", "works", ["legal_force"])
 
     op.create_table(
         "file_sources",
@@ -208,9 +176,6 @@ def upgrade() -> None:
     )
     op.create_index(
         "ix_file_sources_created_run_id", "file_sources", ["created_run_id"]
-    )
-    op.create_index(
-        "ix_file_sources_normalized_url", "file_sources", ["normalized_url"]
     )
 
     op.create_table(
@@ -277,12 +242,6 @@ def upgrade() -> None:
         sa.Column("published_on", sa.Date()),
         sa.Column("consolidated_up_to", sa.Date()),
         sa.Column(
-            "source_metadata",
-            postgresql.JSONB(astext_type=sa.Text()),
-            server_default="{}",
-            nullable=False,
-        ),
-        sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
             server_default=sa.text("now()"),
@@ -323,14 +282,6 @@ def upgrade() -> None:
         ),
     )
     op.create_index("ix_versions_created_run_id", "versions", ["created_run_id"])
-    op.create_index(
-        "ix_versions_status_effective_from",
-        "versions",
-        ["status", "effective_from"],
-    )
-    op.create_index(
-        "ix_versions_status_effective_to", "versions", ["status", "effective_to"]
-    )
     op.create_index(
         "uq_versions_work_consolidated_up_to",
         "versions",
@@ -379,23 +330,14 @@ def downgrade() -> None:
     op.drop_index(
         "uq_versions_work_consolidated_up_to", table_name="versions"
     )
-    op.drop_index("ix_versions_status_effective_to", table_name="versions")
-    op.drop_index("ix_versions_status_effective_from", table_name="versions")
     op.drop_index("ix_versions_created_run_id", table_name="versions")
     op.drop_table("versions")
     op.drop_index("ix_identifiers_work_id", table_name="identifiers")
     op.drop_index("ix_identifiers_created_run_id", table_name="identifiers")
     op.drop_table("identifiers")
-    op.drop_index("ix_file_sources_normalized_url", table_name="file_sources")
     op.drop_index("ix_file_sources_created_run_id", table_name="file_sources")
     op.drop_table("file_sources")
-    op.drop_index("ix_works_legal_force", table_name="works")
-    op.drop_index("ix_works_issuing_authority", table_name="works")
-    op.drop_index("ix_works_jurisdiction_scope", table_name="works")
     op.drop_index("ix_works_created_run_id", table_name="works")
-    op.drop_index("ix_works_resolution_status", table_name="works")
-    op.drop_index("ix_works_instrument_type", table_name="works")
-    op.drop_index("ix_works_authority_tier", table_name="works")
     op.drop_table("works")
     op.drop_index("ix_files_created_run_id", table_name="files")
     op.drop_table("files")
