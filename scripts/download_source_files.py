@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urljoin, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 from urllib.robotparser import RobotFileParser
 
@@ -123,7 +123,23 @@ def download_file(
             "Accept": "application/pdf,text/html,application/xhtml+xml,*/*;q=0.8",
         }
         request = Request(url, headers=headers)
-        with urlopen(request, timeout=TIMEOUT_SECONDS, context=context) as response:
+        response = urlopen(request, timeout=TIMEOUT_SECONDS, context=context)
+
+        # An RBI page may point to the actual PDF through an embedded link.
+        if response.headers.get_content_type() == "text/html" and target_name.endswith(".pdf"):
+            with response:
+                html = response.read().decode("utf-8", errors="replace")
+            match = re.search(r'href=["\']([^"\']+\.pdf)["\']', html, re.IGNORECASE)
+            if not match:
+                raise ValueError("No embedded PDF link found on the webpage.")
+            pdf_url = urljoin(url, match.group(1))
+            response = urlopen(
+                Request(pdf_url, headers=headers),
+                timeout=TIMEOUT_SECONDS,
+                context=context,
+            )
+
+        with response:
             detected_ext = file_extension(url, response.headers.get_content_type())
             
             with tempfile.NamedTemporaryFile(
